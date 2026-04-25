@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Synthetic Data Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:          #07090d;
+    --bg-panel:    #0c1018;
+    --bg-card:     #111720;
+    --bg-hover:    #161e2a;
+    --border:      #1c2a3a;
+    --border-hi:   #2a3f55;
+    --text:        #b8c8d8;
+    --text-dim:    #3d5066;
+    --text-mid:    #6b8099;
+    --green:       #2dff7e;
+    --green-dim:   #0d6632;
+    --amber:       #ffaa33;
+    --amber-dim:   #5a3a00;
+    --red:         #ff4555;
+    --red-dim:     #4a0f14;
+    --blue:        #4fc8ff;
+    --blue-dim:    #0d3550;
+    --purple:      #b070ff;
+    --font-mono:   'JetBrains Mono', monospace;
+    --font-head:   'Syne', sans-serif;
+    --radius:      2px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    overflow: hidden;
+  }
+
+  /* ── Scanline overlay ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,.08) 3px,
+      rgba(0,0,0,.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── Grid bg on panels ── */
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 32px 32px;
+    background-color: var(--bg);
+  }
+
+  /* ══════════════════ LAYOUT ══════════════════ */
+
+  .app {
+    display: grid;
+    grid-template-rows: 44px 1fr;
+    grid-template-columns: 1fr 420px;
+    height: 100vh;
+    gap: 0;
+  }
+
+  /* ── Topbar ── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    position: relative;
+    z-index: 10;
+  }
+
+  .topbar-logo {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .topbar-logo .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+    50%      { opacity: .5; box-shadow: 0 0 3px var(--green); }
+  }
+  .topbar-logo .dot.red   { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .topbar-logo .dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); animation: none; }
+
+  .topbar-sep { width: 1px; height: 22px; background: var(--border); flex-shrink: 0; }
+
+  .session-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  .session-label {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    white-space: nowrap;
+  }
+  .session-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--amber);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    width: 220px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .session-input:focus { border-color: var(--amber); }
+
+  .topbar-pills {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+    align-items: center;
+  }
+  .pill {
+    font-size: 11px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .pill .val { color: var(--text-mid); }
+  .pill .val.ok  { color: var(--green); }
+  .pill .val.err { color: var(--red); }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--border-hi); color: var(--text); background: var(--bg-hover); }
+  .btn.danger:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Left: Chat ── */
+  .chat-panel {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .chat-messages::-webkit-scrollbar { width: 4px; }
+  .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg-group { display: flex; flex-direction: column; gap: 2px; margin-bottom: 12px; }
+
+  .msg-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .msg-meta .role { text-transform: uppercase; letter-spacing: .6px; }
+  .msg-meta .role.user   { color: var(--blue); }
+  .msg-meta .role.agent  { color: var(--green); }
+  .msg-meta .role.system { color: var(--text-dim); }
+
+  .msg-bubble {
+    max-width: 88%;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+    border: 1px solid transparent;
+    font-size: 13px;
+  }
+  .msg-group.user   { align-items: flex-end; }
+  .msg-group.agent  { align-items: flex-start; }
+  .msg-group.system { align-items: flex-start; }
+
+  .msg-group.user  .msg-bubble { background: var(--blue-dim); border-color: rgba(79,200,255,.2); color: #d4eeff; }
+  .msg-group.agent .msg-bubble { background: var(--bg-card); border-color: var(--border); }
+  .msg-group.system .msg-bubble {
+    background: rgba(255,170,51,.04);
+    border-color: rgba(255,170,51,.15);
+    color: var(--text-mid);
+    font-size: 12px;
+    max-width: 100%;
+  }
+
+  .tool-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,170,51,.1);
+    border: 1px solid rgba(255,170,51,.25);
+    color: var(--amber);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin: 3px 3px 0 0;
+  }
+  .tool-pill::before { content: '⚙'; font-size: 9px; }
+
+  .gen-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(45,255,126,.06);
+    border: 1px solid rgba(45,255,126,.2);
+    color: var(--green);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    margin-top: 8px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .gen-badge:hover { background: rgba(45,255,126,.12); }
+  .gen-badge .gid { color: var(--amber); font-size: 10px; }
+
+  .typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    width: fit-content;
+    margin-bottom: 8px;
+  }
+  .typing span {
+    width: 5px; height: 5px;
+    background: var(--text-dim);
+    border-radius: 50%;
+    animation: bounce .9s ease-in-out infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: .15s; }
+  .typing span:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); background: var(--text-mid); } }
+
+  /* ── Suggestion chips ── */
+  .suggestions {
+    padding: 10px 20px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+  }
+  .chip {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-mid);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .chip:hover { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+
+  /* ── Chat input ── */
+  .chat-input-area {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .input-wrap {
+    flex: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .input-prompt {
+    position: absolute;
+    left: 12px;
+    color: var(--green);
+    font-size: 13px;
+    pointer-events: none;
+    user-select: none;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 10px 14px 10px 28px;
+    border-radius: var(--radius);
+    resize: none;
+    outline: none;
+    line-height: 1.5;
+    max-height: 120px;
+    min-height: 42px;
+    transition: border-color .2s;
+    width: 100%;
+  }
+  .chat-input:focus { border-color: var(--border-hi); }
+  .chat-input::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    background: var(--green);
+    border: none;
+    color: #000;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity .15s, transform .1s;
+    letter-spacing: .5px;
+  }
+  .send-btn:hover { opacity: .85; }
+  .send-btn:active { transform: scale(.97); }
+  .send-btn:disabled { opacity: .3; cursor: not-allowed; transform: none; }
+
+  /* ── Right panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-panel);
+    padding: 0 4px;
+    flex-shrink: 0;
+  }
+  .tab {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    padding: 12px 14px 10px;
+    cursor: pointer;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text-mid); }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+  .tab .badge {
+    display: inline-block;
+    background: var(--amber-dim);
+    color: var(--amber);
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    margin-left: 4px;
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .panel-content::-webkit-scrollbar { width: 4px; }
+  .panel-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .tab-pane { display: none; padding: 16px; }
+  .tab-pane.active { display: block; }
+
+  /* ── Data table ── */
+  .data-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .data-meta .kv {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .data-meta .kv span { color: var(--amber); }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  thead th {
+    background: var(--bg-card);
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    font-size: 10px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+    position: sticky;
+    top: 0;
+  }
+  tbody tr { border-bottom: 1px solid rgba(28,42,58,.5); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--bg-hover); }
+  tbody td {
+    padding: 6px 10px;
+    color: var(--text);
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  tbody td.num { color: var(--blue); }
+  td.income-hi { color: var(--green); }
+  td.income-lo { color: var(--text-mid); }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    height: 200px;
+    color: var(--text-dim);
+    font-size: 12px;
+    text-align: center;
+  }
+  .empty-state .icon { font-size: 28px; opacity: .4; }
+
+  /* ── Validation ── */
+  .verdict-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+    background: var(--bg-card);
+  }
+  .verdict-badge {
+    font-family: var(--font-head);
+    font-size: 22px;
+    font-weight: 800;
+    padding: 6px 18px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .verdict-badge.PASS { background: var(--green-dim); color: var(--green); border: 1px solid var(--green-dim); }
+  .verdict-badge.FAIL { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,69,85,.3); }
+
+  .verdict-stats { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+  .stat-row { display: flex; justify-content: space-between; align-items: center; }
+  .stat-label { font-size: 11px; color: var(--text-dim); }
+  .stat-val { font-size: 12px; color: var(--text); }
+
+  .fidelity-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 4px;
+  }
+  .fidelity-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--amber), var(--green));
+    transition: width .6s ease;
+  }
+
+  .section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--text-dim);
+    margin: 14px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .metrics-grid { display: flex; flex-direction: column; gap: 4px; }
+  .metric-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+  }
+  .metric-col { color: var(--text-mid); font-size: 11px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .metric-stat { font-size: 11px; color: var(--text); width: 50px; text-align: right; flex-shrink: 0; }
+  .metric-bar { flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; min-width: 40px; }
+  .metric-bar-fill { height: 100%; border-radius: 2px; }
+  .metric-bar-fill.ks { background: var(--blue); }
+  .metric-bar-fill.js { background: var(--purple); }
+
+  /* ── Dataset info ── */
+  .ds-header {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .ds-kv {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+  .ds-kv .k { color: var(--text-dim); margin-bottom: 2px; }
+  .ds-kv .v { color: var(--green); font-size: 16px; font-weight: 500; }
+
+  .col-list { display: flex; flex-direction: column; gap: 4px; }
+  .col-row {
+    display: grid;
+    grid-template-columns: 160px 70px 1fr;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    font-size: 11px;
+  }
+  .col-name { color: var(--text); }
+  .col-type { color: var(--text-dim); font-size: 10px; }
+  .col-type.num { color: var(--blue); }
+  .col-type.cat { color: var(--purple); }
+  .col-range { color: var(--text-mid); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ── Health ── */
+  .health-grid { display: flex; flex-direction: column; gap: 8px; }
+  .health-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    font-size: 12px;
+  }
+  .health-key { color: var(--text-dim); }
+  .health-val { color: var(--text); }
+  .health-val.ok    { color: var(--green); }
+  .health-val.warn  { color: var(--amber); }
+  .health-val.err   { color: var(--red); }
+
+  .metrics-summary {
+    margin-top: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .ms-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+  }
+  .ms-card .ms-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+  .ms-card .ms-val { font-size: 22px; color: var(--text); font-family: var(--font-head); font-weight: 700; }
+  .ms-card .ms-val.ok { color: var(--green); }
+  .ms-card .ms-val.warn { color: var(--amber); }
+
+  /* ── Toast ── */
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    z-index: 10000;
+    pointer-events: none;
+  }
+  .toast {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    pointer-events: none;
+    animation: slideIn .2s ease forwards;
+    max-width: 320px;
+  }
+  .toast.err { border-color: rgba(255,69,85,.4); color: var(--red); }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes slideOut { to { transform: translateX(20px); opacity: 0; } }
+</style>
+</head>
+<body class="grid-bg">
+
+<div class="app">
+
+  <!-- ══ TOPBAR ══ -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <div class="dot" id="status-dot"></div>
+      Synthetic Data Lab
+    </div>
+    <div class="topbar-sep"></div>
+    <div class="session-row">
+      <span class="session-label">Session</span>
+      <input type="text" class="session-input" id="session-input" placeholder="session-id" />
+      <button class="btn" onclick="newSession()">New</button>
+      <button class="btn danger" onclick="clearSession()">Clear</button>
+    </div>
+    <div class="topbar-pills" id="top-pills">
+      <div class="pill">Status <span class="val" id="pill-status">—</span></div>
+      <div class="topbar-sep"></div>
+      <div class="pill">Dataset <span class="val" id="pill-rows">—</span> rows</div>
+      <div class="topbar-sep"></div>
+      <div class="pill">Model <span class="val" id="pill-model">—</span></div>
+    </div>
+  </header>
+
+  <!-- ══ CHAT ══ -->
+  <section class="chat-panel">
+    <div class="chat-messages" id="chat-messages">
+      <div class="msg-group system">
+        <div class="msg-meta"><span class="role system">System</span></div>
+        <div class="msg-bubble">Connected to <strong>http://localhost:8000</strong>. Ask the agent to generate synthetic data, validate it, or compare strategies. Use natural language — the agent handles the rest.</div>
+      </div>
+    </div>
+
+    <div class="suggestions" id="suggestions">
+      <span class="chip" onclick="sendQuick(this)">Generate 200 high-income women over 40</span>
+      <span class="chip" onclick="sendQuick(this)">Show me the dataset schema</span>
+      <span class="chip" onclick="sendQuick(this)">Generate 300 rows and validate fidelity</span>
+      <span class="chip" onclick="sendQuick(this)">Compare copula vs histogram for male executives</span>
+      <span class="chip" onclick="sendQuick(this)">Sample 5 real rows</span>
+    </div>
+
+    <div class="chat-input-area">
+      <div class="input-wrap">
+        <span class="input-prompt">&gt;</span>
+        <textarea
+          class="chat-input"
+          id="chat-input"
+          rows="1"
+          placeholder="Ask the agent anything about the dataset..."
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+      </div>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()">SEND</button>
+    </div>
+  </section>
+
+  <!-- ══ RIGHT PANEL ══ -->
+  <aside class="right-panel">
+    <div class="tabs">
+      <div class="tab active" data-tab="data" onclick="switchTab('data')">Data <span class="badge" id="badge-data" style="display:none"></span></div>
+      <div class="tab" data-tab="validate" onclick="switchTab('validate')">Validate</div>
+      <div class="tab" data-tab="dataset" onclick="switchTab('dataset')">Schema</div>
+      <div class="tab" data-tab="health" onclick="switchTab('health')">Health</div>
+    </div>
+
+    <div class="panel-content">
+
+      <!-- DATA PREVIEW -->
+      <div class="tab-pane active" id="pane-data">
+        <div id="data-empty" class="empty-state">
+          <div class="icon">⬡</div>
+          <div>No data yet.</div>
+          <div style="color:var(--text-dim)">Ask the agent to generate some rows.</div>
+        </div>
+        <div id="data-content" style="display:none">
+          <div class="data-meta" id="data-meta"></div>
+          <div class="table-wrap">
+            <div id="data-table-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- VALIDATION -->
+      <div class="tab-pane" id="pane-validate">
+        <div id="val-empty" class="empty-state">
+          <div class="icon">✦</div>
+          <div>No validation yet.</div>
+          <div style="color:var(--text-dim)">Ask the agent to validate a generation.</div>
+        </div>
+        <div id="val-content" style="display:none"></div>
+      </div>
+
+      <!-- SCHEMA -->
+      <div class="tab-pane" id="pane-dataset">
+        <div id="ds-empty" class="empty-state">
+          <div class="icon">◈</div>
+          <div>Loading schema...</div>
+        </div>
+        <div id="ds-content" style="display:none"></div>
+      </div>
+
+      <!-- HEALTH -->
+      <div class="tab-pane" id="pane-health">
+        <div id="health-content" class="empty-state">
+          <div class="icon">◌</div>
+          <div>Checking...</div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let currentGenId = null;
+
+// ── Session ID ──────────────────────────────────────────────────────────────
+function randId() {
+  return 'session-' + Math.random().toString(36).slice(2,8);
+}
+function newSession() {
+  document.getElementById('session-input').value = randId();
+  clearMessages();
+  appendSystemMsg('New session started.');
+}
+function clearSession() {
+  const sid = getSessionId();
+  if (!sid) return;
+  fetch(`${API}/agent/session/${sid}`, { method: 'DELETE' })
+    .catch(() => {});
+  clearMessages();
+  appendSystemMsg(`Session "${sid}" cleared.`);
+}
+function getSessionId() {
+  return document.getElementById('session-input').value.trim() || 'default';
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + name));
+  if (name === 'health') loadHealth();
+  if (name === 'dataset') loadDataset();
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, err = false) {
+  const el = document.createElement('div');
+  el.className = 'toast' + (err ? ' err' : '');
+  el.textContent = msg;
+  const c = document.getElementById('toast-container');
+  c.appendChild(el);
+  setTimeout(() => { el.style.animation = 'slideOut .2s ease forwards'; setTimeout(() => el.remove(), 200); }, 2800);
+}
+
+// ── Auto-resize textarea ──────────────────────────────────────────────────
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── Send ────────────────────────────────────────────────────────────────────
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+function sendQuick(el) {
+  document.getElementById('chat-input').value = el.textContent;
+  sendMessage();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  input.style.height = '';
+
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+
+  appendUserMsg(text);
+  const typingEl = appendTyping();
+
+  try {
+    const res = await fetch(`${API}/agent/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: getSessionId(), message: text }),
+    });
+    const data = await res.json();
+    typingEl.remove();
+
+    if (!res.ok) {
+      appendSystemMsg(`Error ${res.status}: ${data.detail || JSON.stringify(data)}`);
+    } else {
+      appendAgentMsg(data);
+      if (data.generation_id) {
+        currentGenId = data.generation_id;
+        fetchAndShowData(data.generation_id);
+      }
+      if (data.validation_summary) {
+        renderValidation(data.validation_summary, data.generation_id);
+      }
+    }
+  } catch (err) {
+    typingEl.remove();
+    appendSystemMsg(`Network error: ${err.message}. Is the API running at ${API}?`);
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── Chat rendering ────────────────────────────────────────────────────────
+function clearMessages() {
+  document.getElementById('chat-messages').innerHTML = '';
+}
+
+function appendSystemMsg(text) {
+  const box = document.getElementById('chat-messages');
+  const g = document.createElement('div');
+  g.className = 'msg-group system';
+  g.innerHTML = `
+    <div class="msg-meta"><span class="role system">System</span><span class="ts">${ts()}</span></div>
+    <div class="msg-bubble">${esc(text)}</div>
+  `;
+  box.appendChild(g);
+  scrollBottom();
+}
+
+function appendUserMsg(text) {
+  const box = document.getElementById('chat-messages');
+  const g = document.createElement('div');
+  g.className = 'msg-group user';
+  g.innerHTML = `
+    <div class="msg-meta"><span class="role user">You</span><span class="ts">${ts()}</span></div>
+    <div class="msg-bubble">${esc(text)}</div>
+  `;
+  box.appendChild(g);
+  scrollBottom();
+}
+
+function appendAgentMsg(data) {
+  const box = document.getElementById('chat-messages');
+  const g = document.createElement('div');
+  g.className = 'msg-group agent';
+
+  let toolsHtml = '';
+  if (data.tool_calls_made && data.tool_calls_made.length) {
+    toolsHtml = '<div style="margin-top:8px">' +
+      data.tool_calls_made.map(t => `<span class="tool-pill">${esc(t)}</span>`).join('') +
+      '</div>';
+  }
+
+  let genHtml = '';
+  if (data.generation_id) {
+    genHtml = `
+      <div class="gen-badge" onclick="fetchAndShowData('${esc(data.generation_id)}'); switchTab('data')">
+        ⬡ View generated data
+        <span class="gid">${esc(data.generation_id.slice(0,16))}…</span>
+      </div>`;
+  }
+
+  g.innerHTML = `
+    <div class="msg-meta"><span class="role agent">Agent</span><span class="ts">${ts()}</span></div>
+    <div class="msg-bubble">${esc(data.reply)}${toolsHtml}${genHtml}</div>
+  `;
+  box.appendChild(g);
+  scrollBottom();
+}
+
+function appendTyping() {
+  const box = document.getElementById('chat-messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-group agent';
+  wrap.innerHTML = `
+    <div class="msg-meta"><span class="role agent">Agent</span></div>
+    <div class="typing"><span></span><span></span><span></span></div>
+  `;
+  box.appendChild(wrap);
+  scrollBottom();
+  return wrap;
+}
+
+function scrollBottom() {
+  const box = document.getElementById('chat-messages');
+  requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+
+function ts() {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function esc(s) {
+  if (typeof s !== 'string') s = String(s ?? '');
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+// ── Data preview ─────────────────────────────────────────────────────────
+// Row cache: genId → { rows, meta }
+const rowCache = {};
+
+function cacheRows(genId, rows, meta) {
+  rowCache[genId] = { rows, meta };
+}
+
+async function fetchAndShowData(genId) {
+  switchTab('data');
+  document.getElementById('data-empty').style.display = 'none';
+  const c = document.getElementById('data-content');
+  c.style.display = 'block';
+
+  const badge = document.getElementById('badge-data');
+  badge.style.display = 'inline';
+  badge.textContent = '…';
+
+  document.getElementById('data-meta').innerHTML =
+    `<div class="kv">ID: <span>${esc(genId.slice(0,24))}…</span></div>
+     <div class="kv" style="color:var(--text-dim);font-size:11px">Fetching generated rows…</div>`;
+  document.getElementById('data-table-container').innerHTML = '';
+
+  // Fetch the actual generated synthetic rows
+  try {
+    const genRes = await fetch(`${API}/generate/${genId}`);
+    if (genRes.ok) {
+      const genData = await genRes.json();
+      const displayRows = genData.rows.slice(0, 50);
+      const totalRows = genData.rows.length;
+      renderDataTable(genId, displayRows, {
+        strategy: genData.strategy,
+        n_rows: totalRows,
+        note: totalRows > 50 ? `Showing first 50 of ${totalRows} synthetic rows` : `${totalRows} synthetic rows`,
+      });
+      badge.textContent = totalRows;
+    } else {
+      renderDataTable(genId, [], { note: 'Could not fetch generated rows.' });
+    }
+  } catch (err) {
+    renderDataTable(genId, [], { note: `Failed to load rows: ${err.message}` });
+  }
+
+  // Fetch validation (cached or fresh)
+  try {
+    let valData;
+    const cached = await fetch(`${API}/validate/${genId}`);
+    if (cached.ok) {
+      valData = await cached.json();
+    } else {
+      const fresh = await fetch(`${API}/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generation_id: genId }),
+      });
+      if (fresh.ok) valData = await fresh.json();
+    }
+    if (valData) renderValidation(valData, genId);
+  } catch {}
+}
+
+function renderDataTable(genId, rows, meta) {
+  document.getElementById('data-empty').style.display = 'none';
+  const c = document.getElementById('data-content');
+  c.style.display = 'block';
+
+  const badge = document.getElementById('badge-data');
+  badge.style.display = 'inline';
+
+  const metaEl = document.getElementById('data-meta');
+  metaEl.innerHTML = [
+    meta.strategy ? `<div class="kv">Strategy: <span>${esc(meta.strategy)}</span></div>` : '',
+    meta.n_rows   ? `<div class="kv">Rows: <span>${meta.n_rows}</span></div>` : '',
+    meta.note     ? `<div class="kv" style="color:var(--text-dim);font-size:11px">${esc(meta.note)}</div>` : '',
+    genId         ? `<div class="kv">ID: <span>${esc(genId.slice(0,20))}…</span></div>` : '',
+  ].filter(Boolean).join('');
+
+  if (!rows || rows.length === 0) {
+    document.getElementById('data-table-container').innerHTML =
+      '<div class="empty-state" style="height:100px"><div>No rows to display.</div></div>';
+    return;
+  }
+
+  const cols = Object.keys(rows[0]);
+  let html = '<table><thead><tr>' + cols.map(col => `<th>${esc(col)}</th>`).join('') + '</tr></thead><tbody>';
+  for (const row of rows) {
+    html += '<tr>' + cols.map(col => {
+      const v = row[col];
+      const isNum = typeof v === 'number';
+      let cls = isNum ? 'num' : '';
+      if (col === 'income') cls = v === '>50K' ? 'income-hi' : 'income-lo';
+      return `<td class="${cls}">${esc(String(v ?? ''))}</td>`;
+    }).join('') + '</tr>';
+  }
+  html += '</tbody></table>';
+  document.getElementById('data-table-container').innerHTML = html;
+  badge.textContent = rows.length;
+}
+
+// ── Validation ────────────────────────────────────────────────────────────
+function renderValidation(summary, genId) {
+  if (!summary) return;
+  const verdict = summary.verdict || '—';
+  const fidelity = typeof summary.fidelity_score === 'number' ? (summary.fidelity_score * 100).toFixed(1) : '—';
+  const tstr = typeof summary.tstr_accuracy === 'number' ? (summary.tstr_accuracy * 100).toFixed(1) + '%' : '—';
+  const baseline = typeof summary.baseline_accuracy === 'number' ? (summary.baseline_accuracy * 100).toFixed(1) + '%' : '—';
+
+  let ksHtml = '';
+  if (summary.ks_tests && summary.ks_tests.length) {
+    const rows = summary.ks_tests.slice(0,8).map(m => {
+      const pct = Math.min(m.statistic * 100, 100).toFixed(0);
+      return `<div class="metric-row">
+        <div class="metric-col">${esc(m.column)}</div>
+        <div class="metric-bar"><div class="metric-bar-fill ks" style="width:${pct}%"></div></div>
+        <div class="metric-stat">${m.statistic.toFixed(3)}</div>
+      </div>`;
+    }).join('');
+    ksHtml = `<div class="section-title">KS Tests</div><div class="metrics-grid">${rows}</div>`;
+  }
+
+  let jsHtml = '';
+  if (summary.js_divergences && summary.js_divergences.length) {
+    const rows = summary.js_divergences.slice(0,8).map(m => {
+      const pct = Math.min(m.statistic * 500, 100).toFixed(0);
+      return `<div class="metric-row">
+        <div class="metric-col">${esc(m.column)}</div>
+        <div class="metric-bar"><div class="metric-bar-fill js" style="width:${pct}%"></div></div>
+        <div class="metric-stat">${m.statistic.toFixed(4)}</div>
+      </div>`;
+    }).join('');
+    jsHtml = `<div class="section-title">JS Divergences</div><div class="metrics-grid">${rows}</div>`;
+  }
+
+  let notesHtml = '';
+  if (summary.notes && summary.notes.length) {
+    notesHtml = `<div class="section-title">Notes</div>` +
+      summary.notes.map(n => `<div class="msg-bubble" style="margin-bottom:4px;font-size:11px;border-color:rgba(255,170,51,.2);background:rgba(255,170,51,.04)">${esc(n)}</div>`).join('');
+  }
+
+  document.getElementById('val-empty').style.display = 'none';
+  const c = document.getElementById('val-content');
+  c.style.display = 'block';
+  c.innerHTML = `
+    <div class="verdict-card">
+      <div class="verdict-badge ${verdict}">${verdict}</div>
+      <div class="verdict-stats">
+        <div class="stat-row"><span class="stat-label">Fidelity Score</span><span class="stat-val">${fidelity}%</span></div>
+        <div class="fidelity-bar"><div class="fidelity-fill" style="width:${fidelity}%"></div></div>
+        <div class="stat-row" style="margin-top:6px"><span class="stat-label">TSTR Accuracy</span><span class="stat-val">${tstr}</span></div>
+        <div class="stat-row"><span class="stat-label">Baseline</span><span class="stat-val">${baseline}</span></div>
+        ${genId ? `<div class="stat-row"><span class="stat-label" style="font-size:10px">ID:</span><span class="stat-val" style="font-size:10px;color:var(--amber)">${esc(genId.slice(0,20))}…</span></div>` : ''}
+      </div>
+    </div>
+    ${ksHtml}${jsHtml}${notesHtml}
+  `;
+
+  switchTab('validate');
+}
+
+// ── Dataset schema ────────────────────────────────────────────────────────
+async function loadDataset() {
+  const empty = document.getElementById('ds-empty');
+  const content = document.getElementById('ds-content');
+  if (content.style.display === 'block') return;
+
+  try {
+    const res = await fetch(`${API}/dataset/info`);
+    const d = await res.json();
+
+    empty.style.display = 'none';
+    content.style.display = 'block';
+
+    const dist = d.class_distribution || {};
+    const distStr = Object.entries(dist).map(([k,v]) => `${k}: ${(v*100).toFixed(1)}%`).join(' · ');
+
+    let colsHtml = (d.columns || []).map(col => {
+      const isNum = (d.numeric_columns || []).includes(col);
+      const isCat = (d.categorical_columns || []).includes(col);
+      const typeLabel = isNum ? 'numeric' : (isCat ? 'categorical' : 'other');
+      const typeCls   = isNum ? 'num' : (isCat ? 'cat' : '');
+      let range = '';
+      if (isNum && d.value_ranges && d.value_ranges[col]) {
+        const r = d.value_ranges[col];
+        range = `${r.min} – ${r.max}`;
+      } else if (isCat && d.categorical_values && d.categorical_values[col]) {
+        range = d.categorical_values[col].slice(0,4).join(', ') + (d.categorical_values[col].length > 4 ? '…' : '');
+      }
+      return `<div class="col-row">
+        <div class="col-name">${esc(col)}</div>
+        <div class="col-type ${typeCls}">${typeLabel}</div>
+        <div class="col-range">${esc(range)}</div>
+      </div>`;
+    }).join('');
+
+    content.innerHTML = `
+      <div class="ds-header">
+        <div class="ds-kv"><div class="k">Rows</div><div class="v">${(d.n_rows||0).toLocaleString()}</div></div>
+        <div class="ds-kv"><div class="k">Columns</div><div class="v">${(d.columns||[]).length}</div></div>
+        <div class="ds-kv"><div class="k">Target</div><div class="v" style="font-size:13px">${esc(d.target_column||'')}</div></div>
+      </div>
+      <div class="section-title">Class Distribution</div>
+      <div style="font-size:11px;color:var(--text-mid);margin-bottom:12px;padding:8px;border:1px solid var(--border);border-radius:2px;background:var(--bg-card)">${esc(distStr)}</div>
+      <div class="section-title">Columns</div>
+      <div class="col-list">${colsHtml}</div>
+    `;
+  } catch (err) {
+    empty.innerHTML = '<div class="icon">◈</div><div style="color:var(--red)">Failed to load schema.</div>';
+  }
+}
+
+// ── Health ────────────────────────────────────────────────────────────────
+async function loadHealth() {
+  const el = document.getElementById('health-content');
+  try {
+    const [hRes, mRes] = await Promise.all([
+      fetch(`${API}/health`),
+      fetch(`${API}/metrics/summary`),
+    ]);
+    const h = await hRes.json();
+    const m = await mRes.json();
+
+    const rows = [
+      ['Status',        h.status,               h.status === 'ok' ? 'ok' : 'err'],
+      ['Dataset loaded',h.dataset_loaded ? 'Yes' : 'No', h.dataset_loaded ? 'ok' : 'err'],
+      ['Dataset rows',  (h.n_rows||0).toLocaleString(), ''],
+      ['Model',         h.model || '—',          ''],
+      ['Version',       h.version || '—',         ''],
+      ['Groq configured', h.groq_configured ? 'Yes' : 'No', h.groq_configured ? 'ok' : 'warn'],
+      ['Strategies',    (h.strategies_available||[]).join(', '), ''],
+    ].map(([k,v,cls]) =>
+      `<div class="health-row"><span class="health-key">${esc(k)}</span><span class="health-val ${cls}">${esc(String(v))}</span></div>`
+    ).join('');
+
+    const passRate = typeof m.pass_rate === 'number' ? (m.pass_rate * 100).toFixed(0) + '%' : '—';
+    const avgFid   = typeof m.avg_fidelity_score === 'number' ? (m.avg_fidelity_score * 100).toFixed(1) + '%' : '—';
+
+    el.className = '';
+    el.innerHTML = `
+      <div class="health-grid">${rows}</div>
+      <div class="metrics-summary">
+        <div class="ms-card"><div class="ms-label">Generations</div><div class="ms-val">${m.total_generations ?? 0}</div></div>
+        <div class="ms-card"><div class="ms-label">Validations</div><div class="ms-val">${m.total_validations ?? 0}</div></div>
+        <div class="ms-card"><div class="ms-label">Avg Fidelity</div><div class="ms-val ${typeof m.avg_fidelity_score === 'number' ? 'ok' : ''}">${avgFid}</div></div>
+        <div class="ms-card"><div class="ms-label">Pass Rate</div><div class="ms-val ${m.pass_rate > 0.8 ? 'ok' : m.pass_rate > 0.5 ? 'warn' : ''}">${passRate}</div></div>
+      </div>
+    `;
+  } catch (err) {
+    el.innerHTML = '<div class="icon" style="font-size:24px;opacity:.4">◌</div><div style="color:var(--red)">Cannot reach API.</div>';
+  }
+}
+
+// ── Status bar ────────────────────────────────────────────────────────────
+async function pollStatus() {
+  const dot = document.getElementById('status-dot');
+  try {
+    const res = await fetch(`${API}/health`);
+    const d = await res.json();
+    dot.className = 'dot' + (d.status === 'ok' ? '' : ' amber');
+    document.getElementById('pill-status').textContent  = d.status;
+    document.getElementById('pill-status').className    = 'val ' + (d.status === 'ok' ? 'ok' : 'err');
+    document.getElementById('pill-rows').textContent    = (d.n_rows||0).toLocaleString();
+    document.getElementById('pill-model').textContent   = (d.model||'—').split('-').slice(0,3).join('-');
+  } catch {
+    dot.className = 'dot red';
+    document.getElementById('pill-status').textContent = 'offline';
+    document.getElementById('pill-status').className   = 'val err';
+  }
+  setTimeout(pollStatus, 10000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.getElementById('session-input').value = randId();
+pollStatus();
+loadDataset();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.DS_Store
+data/adult.data
+data/*.cache
+*.egg-info/
+GUIDE.md
+DECISIONS.md
