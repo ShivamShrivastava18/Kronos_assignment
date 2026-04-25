@@ -11,7 +11,7 @@ TSTR / KS / JS metrics, and provides a Groq-powered conversational agent.
 
 ```bash
 # 1. Clone and enter the repo
-git clone <your-repo-url> && cd voxtral_test
+git clone <https://github.com/ShivamShrivastava18/Kronos_assignment> && cd Kronos_assignment
 
 # 2. Set your Groq key (only needed for /agent/* endpoints)
 cp .env.example .env
@@ -23,6 +23,7 @@ docker-compose up --build
 
 The API is now live at **http://localhost:8000**.  
 Interactive docs: **http://localhost:8000/docs**
+Interactable Frontend at: **http://localhost:8080**
 
 ---
 ## Endpoints — curl examples
