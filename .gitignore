@@ -8,4 +8,9 @@ data/adult.data
 data/*.cache
 *.egg-info/
 GUIDE.md
-DECISIONS.md
+EXECUTIVE_SUMMARY.md
+FINAL_ASSESSMENT.md
+IMPROVEMENT_SUGGESTIONS.md
+REVIEW_REPORT.md
+test_comprehensive.sh
+VERIFICATION_CHECKLIST.md
